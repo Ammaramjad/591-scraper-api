@@ -118,6 +118,7 @@ def extract_land_listing(listing_id: str):
         "description": extract(".house-content .desc")
     }
 
+
 @app.get("/land/{listing_id}")
 def get_land(listing_id: str, request: Request):
     token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
