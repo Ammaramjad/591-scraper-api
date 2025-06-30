@@ -1,2 +1,6 @@
-# 591-scraper-api
-FastAPI-based 591.com.tw property listing scraper
+
+# 🏠 FastAPI 591 Scraper API
+
+Scrapes property listings from 591.com.tw and returns clean JSON data using FastAPI.
+
+## ✅ API Endpoint
