@@ -17,7 +17,6 @@ app.add_middleware(
 
 AUTH_TOKEN = "secure_591_token"
 
-# Retry-enabled session
 def create_retry_session():
     session = requests.Session()
     retry = Retry(
@@ -30,7 +29,6 @@ def create_retry_session():
     session.mount('https://', adapter)
     return session
 
-# Get session and 591 tokens
 def get_session_and_tokens():
     session = create_retry_session()
     headers = {
@@ -43,7 +41,6 @@ def get_session_and_tokens():
     deviceid = session.cookies.get("T591_TOKEN")
     return session, token, deviceid
 
-# Fetch listing details from 591 API
 def fetch_listing_details(listing_id):
     session, xsrf_token, deviceid = get_session_and_tokens()
     headers = {
@@ -58,7 +55,6 @@ def fetch_listing_details(listing_id):
     response.raise_for_status()
     return response.json()["data"]
 
-# Parse and clean the data
 def parse_listing_info(data):
     return {
         "title": data.get("title", ""),
@@ -78,7 +74,6 @@ def parse_listing_info(data):
         "description": data.get("remark", {}).get("content", "")
     }
 
-# API for rent listings
 @app.get("/listing/{listing_id}")
 def get_listing(listing_id: str, request: Request):
     token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
@@ -95,9 +90,6 @@ def get_listing(listing_id: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# -------------------------------
-# New endpoint for land listings
-# -------------------------------
 def extract_land_listing(listing_id: str):
     url = f"https://land.591.com.tw/sale/{listing_id}"
     headers = {
