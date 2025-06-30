@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all for testing
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -16,6 +16,7 @@ app.add_middleware(
 
 AUTH_TOKEN = "secure_591_token"
 
+# Retry-enabled session
 def create_retry_session():
     session = requests.Session()
     retry = Retry(
@@ -28,6 +29,7 @@ def create_retry_session():
     session.mount('https://', adapter)
     return session
 
+# Get session and 591 tokens
 def get_session_and_tokens():
     session = create_retry_session()
     headers = {
@@ -40,6 +42,7 @@ def get_session_and_tokens():
     deviceid = session.cookies.get("T591_TOKEN")
     return session, token, deviceid
 
+# Fetch listing details from 591 API
 def fetch_listing_details(listing_id):
     session, xsrf_token, deviceid = get_session_and_tokens()
     headers = {
@@ -54,6 +57,7 @@ def fetch_listing_details(listing_id):
     response.raise_for_status()
     return response.json()["data"]
 
+# Parse and clean the data
 def parse_listing_info(data):
     return {
         "title": data.get("title", ""),
@@ -73,9 +77,10 @@ def parse_listing_info(data):
         "description": data.get("remark", {}).get("content", "")
     }
 
+# API route
 @app.get("/listing/{listing_id}")
 def get_listing(listing_id: str, request: Request):
-    token = request.headers.get("X-Auth-Token")
+    token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
     if token != AUTH_TOKEN:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
