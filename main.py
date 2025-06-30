@@ -20,11 +20,12 @@ def get_session_and_tokens():
         "User-Agent": "Mozilla/5.0",
         "device": "pc"
     }
-    res = session.get("https://rent.591.com.tw/", headers=headers)
+    res = session.get("https://rent.591.com.tw/", headers=headers, verify=False)  # ⬅️ Added verify=False
     res.raise_for_status()
     token = session.cookies.get("XSRF-TOKEN")
     deviceid = session.cookies.get("T591_TOKEN")
     return session, token, deviceid
+
 
 def fetch_listing_details(listing_id):
     session, xsrf_token, deviceid = get_session_and_tokens()
@@ -36,9 +37,10 @@ def fetch_listing_details(listing_id):
         "Referer": f"https://rent.591.com.tw/{listing_id}"
     }
     url = f"https://bff.591.com.tw/v1/house/rent/detail?id={listing_id}"
-    response = session.get(url, headers=headers)
+    response = session.get(url, headers=headers, verify=False)  # ⬅️ Added verify=False
     response.raise_for_status()
     return response.json()["data"]
+
 
 def parse_listing_info(data):
     return {
