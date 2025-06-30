@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from bs4 import BeautifulSoup
 
 app = FastAPI()
 
@@ -77,7 +78,7 @@ def parse_listing_info(data):
         "description": data.get("remark", {}).get("content", "")
     }
 
-# API route
+# API for rent listings
 @app.get("/listing/{listing_id}")
 def get_listing(listing_id: str, request: Request):
     token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
@@ -91,5 +92,48 @@ def get_listing(listing_id: str, request: Request):
         raise HTTPException(status_code=504, detail="Timeout from 591.com.tw")
     except requests.exceptions.SSLError:
         raise HTTPException(status_code=502, detail="SSL certificate verification failed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# -------------------------------
+# New endpoint for land listings
+# -------------------------------
+def extract_land_listing(listing_id: str):
+    url = f"https://land.591.com.tw/sale/{listing_id}"
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept-Language": "zh-TW,zh;q=0.9"
+    }
+    res = requests.get(url, headers=headers, verify=False, timeout=10)
+    res.raise_for_status()
+
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    def extract(selector):
+        el = soup.select_one(selector)
+        return el.get_text(strip=True) if el else ""
+
+    return {
+        "title": extract("h1.house-title"),
+        "price": extract(".price .total"),
+        "unit_price": extract(".price .unit-price"),
+        "area": extract("div:has(span:contains('土地面積')) span.value"),
+        "zone": extract("div:has(span:contains('使用分區')) span.value"),
+        "road_width": extract("div:has(span:contains('臨路路寬')) span.value"),
+        "location": extract(".position .info .addr"),
+        "agent": extract(".avatar .name"),
+        "agent_info": extract(".avatar .info"),
+        "description": extract(".house-content .desc")
+    }
+
+@app.get("/land/{listing_id}")
+def get_land(listing_id: str, request: Request):
+    token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
+    if token != AUTH_TOKEN:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    try:
+        data = extract_land_listing(listing_id)
+        return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
