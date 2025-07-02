@@ -4,7 +4,6 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
-import re
 
 app = FastAPI()
 
@@ -17,12 +16,6 @@ app.add_middleware(
 )
 
 AUTH_TOKEN = "secure_591_token"
-ENABLE_AUTH = True
-
-def check_auth(request: Request):
-    token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
-    if ENABLE_AUTH and token != AUTH_TOKEN:
-        raise HTTPException(status_code=403, detail="Unauthorized")
 
 def create_retry_session():
     session = requests.Session()
@@ -83,7 +76,10 @@ def parse_listing_info(data):
 
 @app.get("/listing/{listing_id}")
 def get_listing(listing_id: str, request: Request):
-    check_auth(request)
+    token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
+    if token != AUTH_TOKEN:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
     try:
         raw_data = fetch_listing_details(listing_id)
         return {"status": "success", "data": parse_listing_info(raw_data)}
@@ -92,20 +88,7 @@ def get_listing(listing_id: str, request: Request):
     except requests.exceptions.SSLError:
         raise HTTPException(status_code=502, detail="SSL certificate verification failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Fetch error: {str(e)}")
-
-
-### ✅ FIXED LAND SCRAPER SECTION
-
-def extract_text_by_label(soup, label: str) -> str:
-    span = soup.find("span", string=re.compile(label))
-    if span:
-        parent_div = span.find_parent("div")
-        if parent_div:
-            value_span = parent_div.find("span", class_="value")
-            if value_span:
-                return value_span.get_text(strip=True)
-    return ""
+        raise HTTPException(status_code=500, detail=str(e))
 
 def extract_land_listing(listing_id: str):
     url = f"https://land.591.com.tw/sale/{listing_id}"
@@ -126,9 +109,9 @@ def extract_land_listing(listing_id: str):
         "title": extract("h1.house-title"),
         "price": extract(".price .total"),
         "unit_price": extract(".price .unit-price"),
-        "area": extract_text_by_label(soup, "土地面積"),
-        "zone": extract_text_by_label(soup, "使用分區"),
-        "road_width": extract_text_by_label(soup, "臨路路寬"),
+        "area": extract("div:has(span:contains('土地面積')) span.value"),
+        "zone": extract("div:has(span:contains('使用分區')) span.value"),
+        "road_width": extract("div:has(span:contains('臨路路寬')) span.value"),
         "location": extract(".position .info .addr"),
         "agent": extract(".avatar .name"),
         "agent_info": extract(".avatar .info"),
@@ -137,9 +120,12 @@ def extract_land_listing(listing_id: str):
 
 @app.get("/land/{listing_id}")
 def get_land(listing_id: str, request: Request):
-    check_auth(request)
+    token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
+    if token != AUTH_TOKEN:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
     try:
         data = extract_land_listing(listing_id)
         return {"status": "success", "data": data}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Parse error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
