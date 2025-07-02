@@ -4,7 +4,6 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
-import re
 
 app = FastAPI()
 
@@ -17,7 +16,7 @@ app.add_middleware(
 )
 
 AUTH_TOKEN = "secure_591_token"
-ENABLE_AUTH = True
+ENABLE_AUTH = True  # Set to False if you want to disable token check temporarily
 
 def check_auth(request: Request):
     token = request.headers.get("X-Auth-Token") or request.query_params.get("token")
@@ -94,19 +93,6 @@ def get_listing(listing_id: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fetch error: {str(e)}")
 
-
-### ✅ FIXED LAND SCRAPER SECTION
-
-def extract_text_by_label(soup, label: str) -> str:
-    span = soup.find("span", string=re.compile(label))
-    if span:
-        parent_div = span.find_parent("div")
-        if parent_div:
-            value_span = parent_div.find("span", class_="value")
-            if value_span:
-                return value_span.get_text(strip=True)
-    return ""
-
 def extract_land_listing(listing_id: str):
     url = f"https://land.591.com.tw/sale/{listing_id}"
     headers = {
@@ -126,9 +112,9 @@ def extract_land_listing(listing_id: str):
         "title": extract("h1.house-title"),
         "price": extract(".price .total"),
         "unit_price": extract(".price .unit-price"),
-        "area": extract_text_by_label(soup, "土地面積"),
-        "zone": extract_text_by_label(soup, "使用分區"),
-        "road_width": extract_text_by_label(soup, "臨路路寬"),
+        "area": extract("div:has(span:contains('土地面積')) span.value"),
+        "zone": extract("div:has(span:contains('使用分區')) span.value"),
+        "road_width": extract("div:has(span:contains('臨路路寬')) span.value"),
         "location": extract(".position .info .addr"),
         "agent": extract(".avatar .name"),
         "agent_info": extract(".avatar .info"),
