@@ -1,24 +1,17 @@
-
-from fastapi import APIRouter, Query
-from extract.land_rent import extract_land_rent
+from fastapi import APIRouter
+from land_rent import extract_land_rent
+from land_sale import extract_land_sale
 
 router = APIRouter()
 
-
-
-@app.get("/land-rent/{listing_id}")
-def get_land_rent(listing_id: int, token: str):
+@router.get("/land-rent/{listing_id}")
+def get_land_rent(listing_id: str, token: str):
     url = f"https://land.591.com.tw/rent/{listing_id}"
     data = extract_land_rent(url)
-    return {"status": "success", "data": data}
-
-
-
-
-
+    return {"status": "success", "data": data, "token": token}
 
 @router.get("/land-sale/{listing_id}")
-def get_land_sale(listing_id: str, request: Request):
-    check_auth(request)
+def get_land_sale(listing_id: str, token: str):
     url = f"https://land.591.com.tw/sale/{listing_id}"
-    return {"status": "success", "data": extract_land_sale(url)}
+    data = extract_land_sale(url)
+    return {"status": "success", "data": data, "token": token}
