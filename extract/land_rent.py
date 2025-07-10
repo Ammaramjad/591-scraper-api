@@ -1,28 +1,24 @@
-import requests
 from bs4 import BeautifulSoup
+import re
 
-def extract_land_rent(url: str) -> dict:
-    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://land.591.com.tw/"}
-    res = requests.get(url, headers=headers, verify=False)
-    soup = BeautifulSoup(res.text, 'html.parser')
-    text = soup.get_text(separator="\n")
-
-    def near(key, after=20):
-        idx = text.find(key)
-        return text[idx:idx+after].strip() if idx != -1 else ""
+def extract_land_rent_info(soup: BeautifulSoup, full_text: str, url: str):
+    def get_near(keyword, after=30):
+        match = re.search(re.escape(keyword) + r"[:：]?\s*(\S+)", full_text)
+        return match.group(1).strip() if match else ""
 
     return {
-        "title": soup.find("title").text.strip() if soup.find("title") else "",
-        "rent_price": near("元/月"),
-        "unit_price": near("元/坪/月"),
-        "deposit": near("押金", 15),
-        "area": near("坪", 10),
-        "land_type": near("類別", 10),
-        "zone": near("使用分區", 10),
-        "status": near("土地現況", 10),
-        "min_lease": near("最短租期", 10),
-        "agent": near("仲介", 15),
-        "agent_phone": near("☎", 15),
-        "description": "\n".join([l for l in text.split("\n") if l.strip().startswith("❤") or "特色" in l]),
+        "title": soup.title.text.strip() if soup.title else "",
+        "total_price": get_near("元/月"),
+        "unit_price": get_near("元/坪/月"),
+        "area_ping": get_near("土地面積"),
+        "land_type": get_near("類別"),
+        "zone_usage": get_near("使用分區"),
+        "road_width": get_near("臨路路寬") or get_near("路寬"),
+        "agent": get_near("仲介") or get_near("聯絡人"),
+        "agent_phone": get_near("☎") or get_near("電話"),
+        "description": "\n".join([
+            line.strip() for line in full_text.split("\n")
+            if line.strip().startswith("❤") or line.strip().startswith("★")
+        ]),
         "url": url
     }
