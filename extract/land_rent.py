@@ -1,80 +1,37 @@
 import requests
 from bs4 import BeautifulSoup
 
-def extract_land_rent(url: str) -> dict:
+def extract_land_rent(url):
     headers = {
-        "User-Agent": "Mozilla/5.0",
-        # Add required tokens if needed
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Referer": "https://land.591.com.tw/",
+    }
+    response = requests.get(url, headers=headers, verify=False)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    text = soup.get_text()
+
+    def extract_near(keyword, after=10, before=10):
+        idx = text.find(keyword)
+        if idx != -1:
+            start = max(0, idx - before)
+            end = idx + len(keyword) + after
+            return text[start:end].strip()
+        return ""
+
+    data = {
+        "title": soup.find("title").text.strip() if soup.find("title") else "",
+        "total_price": extract_near("萬元", after=10),
+        "unit_price": extract_near("單價", after=15),
+        "area_ping": extract_near("坪", before=6, after=6),
+        "land_type": extract_near("住宅用地", after=5),
+        "road_width": extract_near("臨路路寬", after=10),
+        "agent": extract_near("仲介:", after=20),
+        "agent_phone": extract_near("☎", after=15),
+        "description": "\n".join([
+            line.strip() for line in text.split("\n")
+            if line.strip().startswith("❤") or line.strip().startswith("♥")
+        ]),
+        "url": url
     }
 
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return {"error": f"Failed to fetch URL, status code: {response.status_code}"}
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Initialize dictionary
-        data = {
-            "title": "",
-            "total_price": "",
-            "unit_price": "",
-            "area_ping": "",
-            "land_type": "",
-            "road_width": "",
-            "agent": "",
-            "agent_phone": "",
-            "description": "",
-            "url": url
-        }
-
-        # Basic extraction logic — update selectors as needed
-        try:
-            data['title'] = soup.select_one("h1.title").text.strip()
-        except:
-            data['title'] = ""
-
-        try:
-            data['total_price'] = soup.select_one(".price span").text.strip()
-        except:
-            data['total_price'] = ""
-
-        try:
-            data['unit_price'] = soup.find(string="元/坪/月").find_previous("div").text.strip()
-        except:
-            data['unit_price'] = ""
-
-        try:
-            data['area_ping'] = soup.find(string="土地面積").find_next("div").text.strip()
-        except:
-            data['area_ping'] = ""
-
-        try:
-            data['land_type'] = soup.find(string="類別").find_next("div").text.strip()
-        except:
-            data['land_type'] = ""
-
-        try:
-            data['road_width'] = soup.find(string="臨路路寬").find_next("div").text.strip()
-        except:
-            data['road_width'] = ""
-
-        try:
-            data['agent'] = soup.select_one(".agent-name").text.strip()
-        except:
-            data['agent'] = ""
-
-        try:
-            data['agent_phone'] = soup.select_one("a.phone").text.strip()
-        except:
-            data['agent_phone'] = ""
-
-        try:
-            data['description'] = soup.select_one(".desc").text.strip()
-        except:
-            data['description'] = ""
-
-        return data
-
-    except Exception as e:
-        return {"error": f"Exception during scraping: {str(e)}"}
+    return data

@@ -4,9 +4,11 @@ from extract.land_rent import extract_land_rent
 
 router = APIRouter()
 
-@router.get("/land-rent/{item_id}")
-def get_land_rent(item_id: int, token: str = Query(...)):
-    url = f"https://land.591.com.tw/rent/{item_id}"
+
+
+@app.get("/land-rent/{listing_id}")
+def get_land_rent(listing_id: int, token: str):
+    url = f"https://land.591.com.tw/rent/{listing_id}"
     data = extract_land_rent(url)
     return {"status": "success", "data": data}
 
