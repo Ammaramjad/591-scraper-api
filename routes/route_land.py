@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from land_rent import extract_land_rent
-from land_sale import extract_land_sale
+from extractors.land_rent import extract_land_rent
+from extractors.land_sale import extract_land_sale
 
 router = APIRouter()
 
@@ -15,3 +15,4 @@ def get_land_sale(listing_id: str, token: str):
     url = f"https://land.591.com.tw/sale/{listing_id}"
     data = extract_land_sale(url)
     return {"status": "success", "data": data, "token": token}
+
